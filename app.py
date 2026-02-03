@@ -11,6 +11,8 @@ import searcherAI as searcherAI
 # Description: This file implements a simple GUI using PySimpleGUI to allow users to input queries
 
 def run():
+
+    # Define the GUI layout
     layout = [
         [sg.Text("Enter query"), sg.Input(key="query")],
         [sg.Button("Search")],
@@ -20,11 +22,13 @@ def run():
 
     window = sg.Window("Tip of the Tongue Retrieval", layout)
 
+    # Event loop
     while True:
         event, values = window.read()
         if event == sg.WINDOW_CLOSED:
             break
 
+        # Handle search without AI
         if event == "Search" and values["use_ai"] == False:
             query = values["query"]
             # Replace with your IR system call:
@@ -34,6 +38,7 @@ def run():
                 output += f"{hit['rank']} | {hit['title']} | Score: {hit['score']:.4f}\n{hit['snippet']}\n\n"
             window["results"].update(output)
         
+        # Handle search with AI
         elif event == "Search" and values["use_ai"] == True:
             query = values["query"]
             # Replace with your AI-enhanced IR system call:
