@@ -1,4 +1,5 @@
 import json
+import tkinter as tk
 
 import PySimpleGUI as sg
 
@@ -15,7 +16,7 @@ def run():
     # Define the GUI layout
     layout = [
         [sg.Text("Enter query"), sg.Input(key="query")],
-        [sg.Button("Search")],
+        [sg.Button("Search", bind_return_key=True)],
         [sg.Checkbox("Use AI-enhanced search", key="use_ai")],
         [sg.Multiline(size=(80, 20), key="results")]
     ]
@@ -29,20 +30,13 @@ def run():
             break
 
         # Handle search without AI
-        if event == "Search" and values["use_ai"] == False:
+        if event == "Search":
             query = values["query"]
             # Replace with your IR system call:
-            hits = searcher.search(query)
-            output = ""
-            for hit in hits.values():
-                output += f"{hit['rank']} | {hit['title']} | Score: {hit['score']:.4f}\n{hit['snippet']}\n\n"
-            window["results"].update(output)
-        
-        # Handle search with AI
-        elif event == "Search" and values["use_ai"] == True:
-            query = values["query"]
-            # Replace with your AI-enhanced IR system call:
-            hits = searcherAI.search(query)
+            if values["use_ai"] == False:
+                hits = searcher.search(query)
+            else:
+                hits = searcherAI.search(query)
             output = ""
             for hit in hits.values():
                 output += f"{hit['rank']} | {hit['title']} | Score: {hit['score']:.4f}\n{hit['snippet']}\n\n"
