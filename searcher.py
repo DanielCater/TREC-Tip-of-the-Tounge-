@@ -10,7 +10,7 @@ from queryDecomposerImproved import decompose_query
 
 # File: searcher.py
 # Authors: Daniel Cater, Edin Quintana, Ryan Razzano, and Melvin Chino-Hernandez
-# Version: 12/3/2024
+# Version: 2/3/2026
 # Description: This program performs search using Pyserini and
 # incorporates query decomposition for improved search relevance.
 
@@ -20,7 +20,7 @@ except OSError:
     nltk.download('stopwords')
     stop_words = set(stopwords.words('english'))
 
-# Highlight snippet with query terms in bold (**term**)
+# Highlight snippet with query terms
 def highlight_snippet(contents, query_terms, stop_words, window=100):
     # Normalize content for searching
     lower_contents = contents.lower()
@@ -64,7 +64,7 @@ def highlight_snippet(contents, query_terms, stop_words, window=100):
 
     if snippet_terms:
         pattern = r'\b(' + '|'.join(re.escape(t) for t in snippet_terms) + r')\b'
-        snippet = re.sub(pattern, r'**\1**', snippet, flags=re.IGNORECASE)
+        snippet = re.sub(pattern, r'\1', snippet, flags=re.IGNORECASE)
 
     return snippet
 
