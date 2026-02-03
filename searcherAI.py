@@ -21,34 +21,50 @@ except OSError:
     stop_words = set(stopwords.words('english'))
 
 # Highlight snippet with query terms in bold (**term**)
-def highlight_snippet(contents, query_terms, window=100):
-    # Filter out stopwords and very short tokens
+def highlight_snippet(contents, query_terms, stop_words, window=100):
+    # Normalize content for searching
+    lower_contents = contents.lower()
+
+    # Filter query terms
     meaningful_terms = [
-        t for t in query_terms
+        t.lower() for t in query_terms
         if t.lower() not in stop_words and len(t) > 2
     ]
-    if not meaningful_terms:
-        # fallback: just return first 150 chars
+
+    # Keep only terms that actually appear in the document
+    present_terms = [
+        t for t in meaningful_terms
+        if re.search(r'\b' + re.escape(t) + r'\b', lower_contents)
+    ]
+
+    if not present_terms:
         return contents[:150].replace("\n", " ")
 
-    # Anchor snippet around first match of a meaningful term
-    anchor_idx = None
-    for term in meaningful_terms:
-        match = re.search(r'\b' + re.escape(term) + r'\b', contents, re.IGNORECASE)
-        if match:
-            anchor_idx = match.start()
-            break
+    # Find the best anchor: the earliest occurrence of ANY present term
+    matches = []
+    for term in present_terms:
+        m = re.search(r'\b' + re.escape(term) + r'\b', lower_contents)
+        if m:
+            matches.append(m.start())
 
-    if anchor_idx is not None:
+    if matches:
+        anchor_idx = min(matches)
         start = max(0, anchor_idx - 50)
         end = min(len(contents), anchor_idx + window)
         snippet = contents[start:end].replace("\n", " ")
     else:
         snippet = contents[:150].replace("\n", " ")
 
-    # Build one regex for all meaningful terms
-    pattern = r'\b(' + '|'.join(re.escape(t) for t in meaningful_terms) + r')\b'
-    snippet = re.sub(pattern, r'**\1**', snippet, flags=re.IGNORECASE)
+    # Highlight only terms that appear in the snippet
+    snippet_lower = snippet.lower()
+    snippet_terms = [
+        t for t in present_terms
+        if re.search(r'\b' + re.escape(t) + r'\b', snippet_lower)
+    ]
+
+    if snippet_terms:
+        pattern = r'\b(' + '|'.join(re.escape(t) for t in snippet_terms) + r')\b'
+        snippet = re.sub(pattern, r'**\1**', snippet, flags=re.IGNORECASE)
 
     return snippet
 
@@ -105,59 +121,56 @@ def reciprocal_rank_fusion(results, k=20, c=100):
     return sorted(scores.items(), key=lambda x: x[1], reverse=True)[:k]
 
 # --- Interactive Search Loop ---
-def search():
+def search(query):
     searcher = LuceneSearcher('indexes/myindex')
     searcher.set_bm25(k1=1.2, b=0.75)
 
-    input_query = input("Search query: ").strip()
-    while input_query != "":
-        print()
-        # Normalize query
-        original_query = input_query.encode('utf-8').decode('unicode_escape')
-        norm_query = original_query.lower()
-        norm_query = re.sub(r'[^\w\s]', '', norm_query)
-        tokens = [t for t in norm_query.split() if t not in stop_words]
-        norm_query = " ".join(tokens)
+    # Normalize query
+    original_query = query.encode('utf-8').decode('unicode_escape')
+    norm_query = original_query.lower()
+    norm_query = re.sub(r'[^\w\s]', '', norm_query)
+    tokens = [t for t in norm_query.split() if t not in stop_words]
+    norm_query = " ".join(tokens)
 
-        # Decompose and filter
-        components = decompose_query(original_query)
-        components = filter_components(components)
-        #print("Filtered Components:", components)
+    # Decompose and filter
+    components = decompose_query(original_query)
+    components = filter_components(components)
+    #print("Filtered Components:", components)
 
-        # Weighted query
-        weighted_query = construct_weighted_query(components, norm_query)
-        weighted_hits = searcher.search(weighted_query, k=100)
-        results = {"weighted": [(hit.docid, hit.score) for hit in weighted_hits]}
+    # Weighted query
+    weighted_query = construct_weighted_query(components, norm_query)
+    weighted_hits = searcher.search(weighted_query, k=100)
+    results = {"weighted": [(hit.docid, hit.score) for hit in weighted_hits]}
 
-        # Subqueries
-        subqueries = [norm_query]
-        subqueries.extend(components.get("entities", []))
-        subqueries.extend(components.get("time", []))
-        subqueries.extend(components.get("descriptions", []))
-        subqueries.extend(components.get("media_type", []))
-        subqueries.extend(components.get("attributes", []))
+    # Subqueries
+    subqueries = [norm_query]
+    subqueries.extend(components.get("entities", []))
+    subqueries.extend(components.get("time", []))
+    subqueries.extend(components.get("descriptions", []))
+    subqueries.extend(components.get("media_type", []))
+    subqueries.extend(components.get("attributes", []))
 
-        for sq in subqueries:
-            hits = searcher.search(sq, k=50)
-            results[sq] = [(hit.docid, hit.score) for hit in hits]
+    for sq in subqueries:
+        hits = searcher.search(sq, k=50)
+        results[sq] = [(hit.docid, hit.score) for hit in hits]
 
-        # Fuse
-        fused = reciprocal_rank_fusion(results, k=50, c=100)
-        for i, (docid, score) in enumerate(fused):
-            doc = searcher.doc(docid)
-            if doc is None:
-                continue
-            raw = json.loads(doc.raw())
-            contents = raw.get("contents", "")
+    # Fuse
+    fused = reciprocal_rank_fusion(results, k=50, c=100)
+    results = {}
+    for i, (docid, score) in enumerate(fused):
+        doc = searcher.doc(docid)
+        if doc is None:
+            continue
+        raw = json.loads(doc.raw())
+        contents = raw.get("contents", "")
 
-            # Title = first line before newline
-            title = contents.split("\n", 1)[0]
-
-            # Snippet = find first query term in contents
-            snippet = highlight_snippet(contents, input_query.split())
-
-            print(f"Rank {i+1} | DocID: {docid} | Score: {score:.4f}")
-            print(f"Title: {title}")
-            print(f"Snippet: {snippet}\n")
-
-        input_query = input("\nSearch query: ").strip()
+        # Title = first line before newline
+        title = contents.split("\n", 1)[0]
+        snippet = highlight_snippet(contents, norm_query.split(), stop_words)
+        results[docid] = {
+            "rank": i + 1,
+            "score": score,
+            "title": title,
+            "snippet": snippet
+        }
+    return results
