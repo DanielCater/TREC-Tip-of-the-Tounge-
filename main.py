@@ -1,8 +1,11 @@
+import sys
 from os import path
+
+import app
 
 # File: main.py
 # Authors: Daniel Cater, Edin Quintana, Ryan Razzano, and Melvin Chino-Hernandez
-# Version: 11/5/2024
+# Version: 2/3/2026
 # Description: This is the main program that integrates query decomposition and document indexing. It allows users to input queries,
 # decomposes them into structured components using spaCy, and searches the indexed documents using Pyserini.
 
@@ -30,6 +33,15 @@ def main():
     index()
 
     # Search
-    search()
+    if(sys.argv.__len__() > 1 and sys.argv[1] == "-cli"):
+        query = input("Search query: ").strip()
+        while query != "":
 
+            print()
+            hits = search(query)
+            for hit in hits.values():
+                print(f"{hit['rank']} | {hit['title']} | Score: {hit['score']:.4f}\n{hit['snippet']}\n")
+            query = input("Search query: ").strip()
+    else:
+        app.run()
 main()

@@ -1,0 +1,46 @@
+import json
+
+import PySimpleGUI as sg
+
+import searcher as searcher
+import searcherAI as searcherAI
+
+# File: app.py
+# Author: Daniel Cater
+# Version: 2/3/2026
+# Description: This file implements a simple GUI using PySimpleGUI to allow users to input queries
+
+def run():
+    layout = [
+        [sg.Text("Enter query"), sg.Input(key="query")],
+        [sg.Button("Search")],
+        [sg.Checkbox("Use AI-enhanced search", key="use_ai")],
+        [sg.Multiline(size=(80, 20), key="results")]
+    ]
+
+    window = sg.Window("Tip of the Tongue Retrieval", layout)
+
+    while True:
+        event, values = window.read()
+        if event == sg.WINDOW_CLOSED:
+            break
+
+        if event == "Search" and values["use_ai"] == False:
+            query = values["query"]
+            # Replace with your IR system call:
+            hits = searcher.search(query)
+            output = ""
+            for hit in hits.values():
+                output += f"{hit['rank']} | {hit['title']} | Score: {hit['score']:.4f}\n{hit['snippet']}\n\n"
+            window["results"].update(output)
+        
+        elif event == "Search" and values["use_ai"] == True:
+            query = values["query"]
+            # Replace with your AI-enhanced IR system call:
+            hits = searcherAI.search(query)
+            output = ""
+            for hit in hits.values():
+                output += f"{hit['rank']} | {hit['title']} | Score: {hit['score']:.4f}\n{hit['snippet']}\n\n"
+            window["results"].update(output)
+            
+    window.close()
