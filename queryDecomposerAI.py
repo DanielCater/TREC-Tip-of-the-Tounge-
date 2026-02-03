@@ -5,7 +5,7 @@ import gpt
 
 # File: queryDecomposerAI.py
 # Authors: Daniel Cater, Edin Quintana, Ryan Razzano, and Melvin Chino-Hernandez
-# Version: 11/5/2024
+# Version: 2/3/2026
 # Description: This program decomposes user queries into structured components
 # using a GPT
 

@@ -5,7 +5,7 @@ from openai import OpenAI
 
 # File: gpt.py
 # Authors: Daniel Cater, Edin Quintana, Ryan Razzano, and Melvin Chino-Hernandez
-# Version: 11/5/2024
+# Version: 2/3/2026
 # Description: This program serves as a wrapper for OpenAI's GPT API to facilitate
 
 load_dotenv() # Load Envirmonemtal Vars

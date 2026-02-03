@@ -4,3 +4,4 @@ openai
 pyserini
 spacy
 nltk
+pysimplegui
